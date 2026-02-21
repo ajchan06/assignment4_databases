@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="MediaDB.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="3287"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="albums" custom_title="0" dock_id="1" table="4,6:mainalbums"/><dock_state state="000000ff00000000fd00000001000000020000046400000370fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000000004640000011700ffffff000002940000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="albums" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="63"/><column index="2" value="300"/><column index="3" value="59"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1">-- Query 9 (25 pts) — Creative Addition
+--
+-- QUESTION:
+-- For each genre, which tracks are the top 3 best-sellers (by total quantity sold)?
+-- Show the genre name, track name, artist name, total units sold, and the rank within the genre.
+--
+-- EXPLANATION:
+-- This query joins genres → tracks → invoice_items to compute how many units of each
+-- track have been sold. It then uses the window function RANK() partitioned by genre
+-- to rank tracks within their genre from best-seller (#1) to least. Only the top 3
+-- ranked tracks per genre are returned (ties share the same rank).
+--
+-- WHAT THE RESULTS MEAN:
+-- Each row shows a top-selling track within its genre, how many copies were sold,
+-- and where it ranks among all tracks in that genre. This is useful for understanding
+-- which content drives revenue in each musical category.
+
+SELECT
+    genre,
+    track_name,
+    artist_name,
+    total_sold,
+    genre_rank
+FROM (
+    SELECT
+        g.Name                                           AS genre,
+        t.Name                                           AS track_name,
+        ar.Name                                          AS artist_name,
+        SUM(ii.Quantity)                                 AS total_sold,
+        RANK() OVER (
+            PARTITION BY g.GenreId
+            ORDER BY SUM(ii.Quantity) DESC
+        )                                                AS genre_rank
+    FROM genres g
+    JOIN tracks t        ON g.GenreId    = t.GenreId
+    JOIN albums al       ON t.AlbumId    = al.AlbumId
+    JOIN artists ar      ON al.ArtistId  = ar.ArtistId
+    JOIN invoice_items ii ON t.TrackId  = ii.TrackId
+    WHERE g.Name   IS NOT NULL
+      AND t.Name   IS NOT NULL
+      AND ar.Name  IS NOT NULL
+    GROUP BY g.GenreId, g.Name, t.TrackId, t.Name, ar.ArtistId, ar.Name
+) ranked
+WHERE genre_rank &lt;= 3
+ORDER BY genre, genre_rank;</sql><current_tab id="0"/></tab_sql></sqlb_project>
